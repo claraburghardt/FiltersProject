@@ -3,34 +3,17 @@ from tkinter import filedialog
 from tkinter import ttk
 from PIL import Image, ImageTk
 import cv2 as cv
-import numpy as np
 import os
 from filters import apply_filter
 
-# Function to load images with an alpha channel
-def load_image_with_alpha(filepath):
-    image = cv.imread(filepath, cv.IMREAD_UNCHANGED)
-    if image is None:
-        return None
-    if image.shape[2] == 3:
-        # Add an alpha channel if it doesn't exist
-        b, g, r = cv.split(image)
-        alpha = np.ones(b.shape, dtype=b.dtype) * 255
-        image = cv.merge([b, g, r, alpha])
-    return image
-
-# Path to the folder where stickers are stored
+# Load Stickers
 stickers_path = 'stickers'
-stickers = [load_image_with_alpha(os.path.join(stickers_path, f)) for f in os.listdir(stickers_path) if f.endswith('.png')]
+stickers = [cv.imread(os.path.join(stickers_path, f), cv.IMREAD_UNCHANGED) for f in os.listdir(stickers_path) if f.endswith('.png')]
 
 class FiltersApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Image Editor")
-
-        # Configure all columns to have the same width
-        #for col in range(5):
-        #   self.root.columnconfigure(col, weight=1)
 
         # Label to display image
         self.image_label = tk.Label(root)
@@ -68,7 +51,10 @@ class FiltersApp:
         self.display_image = None
         self.cap = None
         self.video_running = False
-        self.sticker_history = []  # List to keep track of sticker placements
+        self.sticker_history = []
+
+        # Start the video stream
+        self.start_video_stream()
 
     # Method to load an image from file
     def load_image(self):
@@ -84,6 +70,7 @@ class FiltersApp:
             self.display_image = self.original_image.copy()
             self.show_image()
             self.save_image_button.config(state="normal")
+            self.sticker_history = []
 
     # Method to start/stop video stream from webcam
     def start_video_stream(self):
@@ -99,6 +86,7 @@ class FiltersApp:
                 self.original_image = frame
                 self.display_image = self.original_image.copy()
                 self.apply_filter(None)
+                self.apply_stickers()
             self.root.after(10, self.update_video_stream)
 
     # Method to start/stop video stream from webcam
@@ -125,7 +113,19 @@ class FiltersApp:
             self.display_image = self.original_image.copy()
             filtered_image = apply_filter(self.display_image, filter_type)
             self.display_image = filtered_image if filtered_image.ndim == 3 else cv.cvtColor(filtered_image, cv.COLOR_GRAY2BGR)
+            self.apply_stickers()
             self.show_image()
+
+    # Method to apply stickers to the display image
+    def apply_stickers(self):
+        if self.sticker_history and self.display_image is not None:
+            for (start_x, start_y, sticker) in self.sticker_history:
+                h, w = sticker.shape[:2]
+                for i in range(h):
+                    for j in range(w):
+                        if start_y + i < self.display_image.shape[0] and start_x + j < self.display_image.shape[1] and start_y + i >= 0 and start_x + j >= 0:
+                            if sticker[i, j][3] > 0:  # If the pixel is not transparent
+                                self.display_image[start_y + i, start_x + j] = sticker[i, j][:3]
 
     # Method to select a sticker from the sticker list
     def select_sticker(self, index):
@@ -136,7 +136,34 @@ class FiltersApp:
     # Method to place the selected sticker on the image
     def place_sticker(self, event):
         if self.current_sticker is not None and self.display_image is not None:
-            x, y = event.x, event.y
+            # Calculate the actual image coordinates
+            image_label_width = self.image_label.winfo_width()
+            image_label_height = self.image_label.winfo_height()
+            image_width = self.display_image.shape[1]
+            image_height = self.display_image.shape[0]
+
+            # Maintain aspect ratio
+            scale_x = image_width / image_label_width
+            scale_y = image_height / image_label_height
+
+            if image_label_width / image_width < image_label_height / image_height:
+                scale = scale_x
+            else:
+                scale = scale_y
+
+            # Account for any offsets due to aspect ratio
+            display_ratio = image_width / image_height
+            label_ratio = image_label_width / image_label_height
+
+            if display_ratio > label_ratio:
+                offset_y = (image_label_height - int(image_label_width / display_ratio)) // 2
+                y = int((event.y - offset_y) * scale)
+                x = int(event.x * scale)
+            else:
+                offset_x = (image_label_width - int(image_label_height * display_ratio)) // 2
+                x = int((event.x - offset_x) * scale)
+                y = int(event.y * scale)
+
             h, w = self.current_sticker.shape[:2]
             overlay = self.display_image.copy()
 
@@ -144,7 +171,7 @@ class FiltersApp:
             start_x = x - w // 2
             start_y = y - h // 2
 
-            self.sticker_history.append((start_x, start_y, self.current_sticker.copy()))  # Add to history
+            self.sticker_history.append((start_x, start_y, self.current_sticker.copy()))  
 
             # Overlay the sticker on the image
             for i in range(h):
@@ -159,21 +186,8 @@ class FiltersApp:
     # Method to rollback the last placed sticker
     def rollback_sticker(self):
         if self.sticker_history:
-            start_x, start_y, sticker = self.sticker_history[-1]  # Get the last sticker from history
-            overlay = self.display_image.copy()  # Start with the current display image
-
-            h, w = sticker.shape[:2]
-            for i in range(h):
-                for j in range(w):
-                    if start_y + i < overlay.shape[0] and start_x + j < overlay.shape[1] and start_y + i >= 0 and start_x + j >= 0:
-                        if sticker[i, j][3] > 0:  # If the pixel is not transparent
-                            overlay[start_y + i, start_x + j] = self.original_image[start_y + i, start_x + j]
-
-            self.display_image = overlay
-            self.show_image()
-
-            # Remove the last sticker from history
             self.sticker_history.pop()
+            self.apply_filter(None)
 
     # Method to display the image on the GUI
     def show_image(self):
@@ -197,7 +211,6 @@ if __name__ == '__main__':
 
     # Create a button for rollback
     rollback_button = tk.Button(root, text="Rollback", command=app.rollback_sticker)
-    rollback_button.grid(row=1, column=3, sticky="ew")
+    rollback_button.grid(row=1, column=4, sticky="ew")
 
-    app.start_video_stream() # Start the video stream
-    root.mainloop() # Start the main GUI loop
+    root.mainloop()
