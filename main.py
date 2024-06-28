@@ -58,6 +58,9 @@ class FiltersApp:
 
     # Method to load an image from file
     def load_image(self):
+        # Reset the state
+        self.reset_state()
+
         # Stop video stream if running
         if self.video_running:
             self.video_running = False
@@ -83,6 +86,7 @@ class FiltersApp:
         if self.video_running:
             ret, frame = self.cap.read()
             if ret:
+                frame = cv.flip(frame, 1)  # Flip the frame horizontally
                 self.original_image = frame
                 self.display_image = self.original_image.copy()
                 self.apply_filter(None)
@@ -97,6 +101,7 @@ class FiltersApp:
             self.cap = None
             self.save_image_button.config(state="normal")
         else:
+            self.reset_state()  # Reset state when switching back to video stream
             self.start_video_stream()  # Reopen webcam
 
     # Method to save the current displayed image
@@ -171,7 +176,7 @@ class FiltersApp:
             start_x = x - w // 2
             start_y = y - h // 2
 
-            self.sticker_history.append((start_x, start_y, self.current_sticker.copy()))  
+            self.sticker_history.append((start_x, start_y, self.current_sticker.copy()))
 
             # Overlay the sticker on the image
             for i in range(h):
@@ -189,13 +194,21 @@ class FiltersApp:
             self.sticker_history.pop()
             self.apply_filter(None)
 
+    # Method to reset filters and stickers
+    def reset_state(self):
+        self.filter_var.set('')
+        self.sticker_history = []
+        self.display_image = self.original_image.copy() if self.original_image is not None else None
+        self.show_image()
+
     # Method to display the image on the GUI
     def show_image(self):
-        image_rgb = cv.cvtColor(self.display_image, cv.COLOR_BGR2RGB)
-        image_pil = Image.fromarray(image_rgb)
-        image_tk = ImageTk.PhotoImage(image_pil)
-        self.image_label.config(image=image_tk)
-        self.image_label.image = image_tk
+        if self.display_image is not None:
+            image_rgb = cv.cvtColor(self.display_image, cv.COLOR_BGR2RGB)
+            image_pil = Image.fromarray(image_rgb)
+            image_tk = ImageTk.PhotoImage(image_pil)
+            self.image_label.config(image=image_tk)
+            self.image_label.image = image_tk
 
     # Method to handle closing of the application
     def on_closing(self):
