@@ -7,8 +7,8 @@ import os
 from filters import apply_filter
 
 # Load Stickers
-stickers_path = 'stickers'
-stickers = [cv.imread(os.path.join(stickers_path, f), cv.IMREAD_UNCHANGED) for f in os.listdir(stickers_path) if f.endswith('.png')]
+#stickers_path = 'stickers'
+stickers = [cv.imread(os.path.join('stickers', f), cv.IMREAD_UNCHANGED) for f in os.listdir('stickers') if f.endswith('.png')]
 
 class FiltersApp:
     def __init__(self, root):
@@ -45,8 +45,8 @@ class FiltersApp:
                 btn.grid(row=2 + i // 5, column=i % 5, sticky="ew")
                 self.sticker_buttons.append(btn)
 
-        # Button for rollback
-        self.rollback_button = tk.Button(root, text="Rollback", command=app.rollback_sticker)
+        # Create a button for rollback
+        self.rollback_button = tk.Button(root, text="Rollback", command=self.rollback_sticker)
         self.rollback_button.grid(row=1, column=4, sticky="ew")
 
         # Initialize variables
@@ -100,7 +100,7 @@ class FiltersApp:
     # Method to capture image
     def capture_image(self):
         if self.video_running:
-            self.video_running = False 
+            self.video_running = False  
             self.cap.release()  
             self.cap = None
             self.save_image_button.config(state="normal")
