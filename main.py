@@ -45,6 +45,10 @@ class FiltersApp:
                 btn.grid(row=2 + i // 5, column=i % 5, sticky="ew")
                 self.sticker_buttons.append(btn)
 
+        # Button for rollback
+        self.rollback_button = tk.Button(root, text="Rollback", command=app.rollback_sticker)
+        self.rollback_button.grid(row=1, column=4, sticky="ew")
+
         # Initialize variables
         self.current_sticker = None
         self.original_image = None
@@ -93,16 +97,16 @@ class FiltersApp:
                 self.apply_stickers()
             self.root.after(10, self.update_video_stream)
 
-    # Method to start/stop video stream from webcam
+    # Method to capture image
     def capture_image(self):
         if self.video_running:
-            self.video_running = False  # Stop video stream
-            self.cap.release()  # Release webcam
+            self.video_running = False 
+            self.cap.release()  
             self.cap = None
             self.save_image_button.config(state="normal")
         else:
-            self.reset_state()  # Reset state when switching back to video stream
-            self.start_video_stream()  # Reopen webcam
+            self.reset_state()  
+            self.start_video_stream() 
 
     # Method to save the current displayed image
     def save_image(self):
@@ -221,9 +225,4 @@ if __name__ == '__main__':
     root = tk.Tk()
     app = FiltersApp(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
-
-    # Create a button for rollback
-    rollback_button = tk.Button(root, text="Rollback", command=app.rollback_sticker)
-    rollback_button.grid(row=1, column=4, sticky="ew")
-
     root.mainloop()
