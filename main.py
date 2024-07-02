@@ -7,7 +7,6 @@ import os
 from filters import apply_filter
 
 # Load Stickers
-#stickers_path = 'stickers'
 stickers = [cv.imread(os.path.join('stickers', f), cv.IMREAD_UNCHANGED) for f in os.listdir('stickers') if f.endswith('.png')]
 
 class FiltersApp:
@@ -42,10 +41,10 @@ class FiltersApp:
         for i, sticker in enumerate(stickers):
             if sticker is not None:
                 btn = tk.Button(root, text=f"Sticker {i+1}", command=lambda i=i: self.select_sticker(i), width=15)
-                btn.grid(row=2 + i // 5, column=i % 5, sticky="ew")
+                btn.grid(row=2 + i // 5, column=i % 5, sticky="ew") 
                 self.sticker_buttons.append(btn)
 
-        # Create a button for rollback
+        # Button for rollback
         self.rollback_button = tk.Button(root, text="Rollback", command=self.rollback_sticker)
         self.rollback_button.grid(row=1, column=4, sticky="ew")
 
@@ -143,6 +142,8 @@ class FiltersApp:
         self.image_label.bind("<Button-1>", self.place_sticker)
 
     # Method to place the selected sticker on the image
+    # Places the selected sticker on the display image at the clicked position,
+    # maintaining aspect ratio and handling transparency, then updates and shows the image.
     def place_sticker(self, event):
         if self.current_sticker is not None and self.display_image is not None:
             # Calculate the actual image coordinates
